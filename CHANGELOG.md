@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copy button for code blocks in documentation
 - `mypy` for campaign, constraints and telemetry
 - `to_searchspace` convenience constructor in `Parameter` class
+- `to_objective` convenience constructor in `Target` class
 
 ### Changed
 - Optional `chem` dependencies are lazily imported
