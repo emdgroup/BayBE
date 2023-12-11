@@ -62,11 +62,16 @@ which we pass into an `Objective`.
 from baybe.targets import NumericalTarget
 from baybe.objective import Objective
 
-target = NumericalTarget(
-    name="Yield",
-    mode="MAX",
-)
+target = NumericalTarget(name="Yield", mode="MAX")
 objective = Objective(mode="SINGLE", targets=[target])
+```
+
+Since there is only one target in our example, we can achieve the same by using the
+convenience constructor of the target object, which requires less code to write:
+```python
+from baybe.targets import NumericalTarget
+
+objective = NumericalTarget(name="Yield", mode="MAX").to_objective()
 ```
 
 In cases where we need to consider multiple (potentially competing) targets, the
@@ -133,6 +138,10 @@ from baybe.searchspace import SearchSpace
 
 searchspace = SearchSpace.from_product(parameters)
 ```
+
+**Note:** In cases where there is only one parameter to be optimized, you can also 
+use the `to_searchspace` convenience constructor of the corresponding parameter object, 
+skipping the explicit `SearchSpace` import.
 
 ### Optional: Defining the Optimization Strategy
 
