@@ -4,6 +4,7 @@ from inspect import signature
 from typing import Any, Callable, Optional
 
 import gpytorch.distributions
+import torch  # noqa: F401
 from botorch.acquisition import AcquisitionFunction as BotorchAcquisitionFunction
 from botorch.models.gpytorch import Model
 from botorch.posteriors import Posterior
