@@ -1,7 +1,7 @@
 """Base class for all Bayesian recommenders."""
 
 from abc import ABC
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 from attrs import define, field
@@ -18,6 +18,8 @@ from baybe.surrogates.base import Surrogate
 from baybe.utils.dataframe import to_tensor
 
 if _ONNX_INSTALLED:
+    from torch import Tensor
+
     from baybe.surrogates import CustomONNXSurrogate
 
 
@@ -35,6 +37,8 @@ class BayesianRecommender(PureRecommender, ABC):
 
     _botorch_acqf = field(default=None, init=False)
     """The current acquisition function."""
+
+    _searchspace: SearchSpace | None = field(default=None, init=False)
 
     acquisition_function_cls: bool = field(default=None)
     "Deprecated! Raises an error when used."
@@ -91,9 +95,20 @@ class BayesianRecommender(PureRecommender, ABC):
 
         self._setup_botorch_acqf(searchspace, objective, measurements)
 
-        return super().recommend(
+        recommendation = super().recommend(
             batch_size=batch_size,
             searchspace=searchspace,
             objective=objective,
             measurements=measurements,
         )
+
+        self._searchspace = searchspace
+
+        return recommendation
+
+    def get_surrogate(self) -> Callable[[pd.DataFrame], tuple[Tensor, Tensor]]:  # noqa: D102
+        def behaves_like_surrogate(exp_rep: pd.DataFrame, /) -> tuple[Tensor, Tensor]:
+            comp_rep = self._searchspace.transform(exp_rep)
+            return self.surrogate_model.posterior(to_tensor(comp_rep))
+
+        return behaves_like_surrogate
