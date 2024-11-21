@@ -18,6 +18,7 @@ from benchmarks.definition import (
     Benchmark,
     ConvergenceExperimentSettings,
 )
+from benchmarks.definition.config import Domain
 
 if TYPE_CHECKING:
     from mpl_toolkits.mplot3d import Axes3D
@@ -40,7 +41,9 @@ def _lookup(z: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
     )
 
 
-def synthetic_2C1D_1C(settings: ConvergenceExperimentSettings) -> DataFrame:
+def synthetic_2C1D_1C(
+    settings: ConvergenceExperimentSettings, domain: Domain
+) -> DataFrame:
     """Hybrid synthetic test function.
 
     Inputs:
@@ -54,24 +57,17 @@ def synthetic_2C1D_1C(settings: ConvergenceExperimentSettings) -> DataFrame:
         {x: 1.610, y: -4.712, z: 3}
     Optimal Output: 4.09685
     """
-    parameters = [
-        NumericalContinuousParameter("x", (-2 * pi, 2 * pi)),
-        NumericalContinuousParameter("y", (-2 * pi, 2 * pi)),
-        NumericalDiscreteParameter("z", (1, 2, 3, 4)),
-    ]
-
-    objective = NumericalTarget(name="target", mode=TargetMode.MAX).to_objective()
-    search_space = SearchSpace.from_product(parameters=parameters)
+    search_space = SearchSpace.from_product(parameters=domain.parameters)
 
     scenarios: dict[str, Campaign] = {
         "Random Recommender": Campaign(
             searchspace=search_space,
             recommender=RandomRecommender(),
-            objective=objective,
+            objective=domain.objective,
         ),
         "Default Recommender": Campaign(
             searchspace=search_space,
-            objective=objective,
+            objective=domain.objective,
         ),
     }
 
@@ -91,14 +87,24 @@ benchmark_config = ConvergenceExperimentSettings(
     n_mc_iterations=50,
 )
 
-synthetic_2C1D_1C_benchmark = Benchmark(
-    function=synthetic_2C1D_1C,
+domain = Domain(
+    parameters=[
+        NumericalContinuousParameter("x", (-2 * pi, 2 * pi)),
+        NumericalContinuousParameter("y", (-2 * pi, 2 * pi)),
+        NumericalDiscreteParameter("z", (1, 2, 3, 4)),
+    ],
+    objective=NumericalTarget(name="target", mode=TargetMode.MAX).to_objective(),
     best_possible_result=4.09685,
-    settings=benchmark_config,
     optimal_function_inputs=[
         {"x": 1.610, "y": 1.571, "z": 3},
         {"x": 1.610, "y": -4.712, "z": 3},
     ],
+)
+
+synthetic_2C1D_1C_benchmark = Benchmark(
+    function=synthetic_2C1D_1C,
+    domain=domain,
+    settings=benchmark_config,
 )
 
 

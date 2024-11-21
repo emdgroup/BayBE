@@ -11,6 +11,9 @@ from attrs.validators import instance_of
 from cattr.gen import make_dict_unstructure_fn, override
 from pandas import DataFrame
 
+from baybe.constraints.base import Constraint
+from baybe.objectives.base import Objective
+from baybe.parameters.base import Parameter
 from baybe.utils.random import temporary_seed
 from benchmarks.result import Result, ResultMetadata
 from benchmarks.serialization import BenchmarkSerialization, converter
@@ -42,23 +45,40 @@ class ConvergenceExperimentSettings(BenchmarkSettings):
 
 
 @define(frozen=True)
-class Benchmark(Generic[BenchmarkSettingsType], BenchmarkSerialization):
-    """The base class for a benchmark executable."""
+class Domain(BenchmarkSerialization):
+    """The domain of the benchmark function."""
 
-    settings: BenchmarkSettingsType = field()
-    """The benchmark configuration."""
+    parameters: list[Parameter] = field()
+    """The parameters of the benchmark function."""
 
-    function: Callable[[BenchmarkSettingsType], DataFrame] = field()
-    """The callable which contains the benchmarking logic."""
+    objective: Objective = field()
+    """The objective of the benchmark function."""
 
-    name: str = field(init=False)
-    """The name of the benchmark."""
+    constraints: list[Constraint] = field(default=[])
+    """The constraints of the benchmark function."""
 
     best_possible_result: float | None = field(default=None)
     """The best possible result which can be achieved in the optimization process."""
 
     optimal_function_inputs: list[dict[str, Any]] | None = field(default=None)
     """An input that creates the best_possible_result."""
+
+
+@define(frozen=True)
+class Benchmark(Generic[BenchmarkSettingsType], BenchmarkSerialization):
+    """The base class for a benchmark executable."""
+
+    function: Callable[[BenchmarkSettingsType, Domain], DataFrame] = field()
+    """The callable which contains the benchmarking logic."""
+
+    settings: BenchmarkSettingsType = field()
+    """The benchmark configuration."""
+
+    domain: Domain = field()
+    """The domain of the benchmark function."""
+
+    name: str = field(init=False)
+    """The name of the benchmark."""
 
     @property
     def description(self) -> str:
@@ -78,7 +98,7 @@ class Benchmark(Generic[BenchmarkSettingsType], BenchmarkSerialization):
 
         with temporary_seed(self.settings.random_seed):
             start_sec = time.perf_counter()
-            result = self.function(self.settings)
+            result = self.function(self.settings, self.domain)
             stop_sec = time.perf_counter()
 
         duration = timedelta(seconds=stop_sec - start_sec)
