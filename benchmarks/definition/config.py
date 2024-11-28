@@ -111,6 +111,10 @@ class Benchmark(Generic[BenchmarkSettingsType], BenchmarkSerialization):
 
         return Result(self.name, result, metadata)
 
+    def best_possible_value(self) -> float:
+        """Return the best possible value of the attached domain."""
+        return self.domain.best_possible_result
+
 
 converter.register_unstructure_hook(
     Benchmark,
