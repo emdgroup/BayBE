@@ -14,6 +14,7 @@ from pandas import DataFrame
 from baybe.constraints.base import Constraint
 from baybe.objectives.base import Objective
 from baybe.parameters.base import Parameter
+from baybe.serialization.mixin import SerialMixin
 from baybe.utils.random import temporary_seed
 from benchmarks.result import Result, ResultMetadata
 from benchmarks.serialization import BenchmarkSerialization, converter
@@ -45,7 +46,7 @@ class ConvergenceExperimentSettings(BenchmarkSettings):
 
 
 @define(frozen=True)
-class Domain(BenchmarkSerialization):
+class Domain(SerialMixin):
     """The domain of the benchmark function."""
 
     parameters: list[Parameter] = field()
@@ -111,13 +112,16 @@ class Benchmark(Generic[BenchmarkSettingsType], BenchmarkSerialization):
         return Result(self.name, result, metadata)
 
 
-# Register un-/structure hooks
 converter.register_unstructure_hook(
     Benchmark,
     lambda o: dict(
         {"description": o.description},
-        **make_dict_unstructure_fn(Benchmark, converter, function=override(omit=True))(
-            o
-        ),
+        **o.domain.to_dict(),
+        **make_dict_unstructure_fn(
+            Benchmark,
+            converter,
+            function=override(omit=True),
+            domain=override(omit=True),
+        )(o),
     ),
 )
