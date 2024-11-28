@@ -77,11 +77,13 @@ class PathConstructor:
         Returns:
             The path constructor.
         """
+        metadata = result.metadata
+
         benchmark_name = result.benchmark_identifier
-        start_datetime = result.metadata.start_datetime
-        commit_hash = result.metadata.commit_hash
-        latest_baybe_tag = result.metadata.latest_baybe_tag
-        branch = result.metadata.branch
+        start_datetime = metadata.start_datetime
+        commit_hash = metadata.commit_hash
+        latest_baybe_tag = metadata.latest_baybe_tag
+        branch = metadata.branch
 
         return PathConstructor(
             benchmark_name=benchmark_name,
