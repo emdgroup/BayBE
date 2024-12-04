@@ -308,5 +308,14 @@ class qThompsonSampling(qSimpleRegret):
         return (flds.n_mc_samples.name,)
 
 
+########################################################################################
+### Hypervolume Improvement
+@define(frozen=True)
+class qLogNoisyExpectedHypervolumeImprovement(AcquisitionFunction):
+    abbreviation: ClassVar[str] = "qLogNEHVI"
+
+    ref_point: float = field()
+
+
 # Collect leftover original slotted classes processed by `attrs.define`
 gc.collect()

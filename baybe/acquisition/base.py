@@ -17,6 +17,7 @@ from baybe.exceptions import (
 )
 from baybe.objectives.base import Objective
 from baybe.objectives.desirability import DesirabilityObjective
+from baybe.objectives.multi import MultiTargetObjective
 from baybe.objectives.single import SingleTargetObjective
 from baybe.searchspace.core import SearchSpace
 from baybe.serialization.core import (
@@ -130,6 +131,8 @@ class AcquisitionFunction(ABC, SerialMixin):
                     additional_params["best_f"] = (
                         bo_surrogate.posterior(train_x).mean.max().item()
                     )
+            case MultiTargetObjective():
+                pass
             case _:
                 raise ValueError(f"Unsupported objective type: {objective}")
 
@@ -151,7 +154,9 @@ def _get_botorch_acqf_class(
     import botorch
 
     for cls in baybe_acqf_cls.mro():
-        if acqf_cls := getattr(botorch.acquisition, cls.__name__, False):
+        if acqf_cls := getattr(botorch.acquisition, cls.__name__, False) or getattr(
+            botorch.acquisition.multi_objective, cls.__name__, False
+        ):
             if is_abstract(acqf_cls):
                 continue
             return acqf_cls  # type: ignore
