@@ -1,5 +1,10 @@
 """Crabnet hyperparameter function with 20 continuous and 3 categorical input. 
-https://huggingface.co/spaces/AccelerationConsortium/crabnet-hyperparameter"""
+This code interacts with an external API hosted on Hugging Face Spaces:
+https://huggingface.co/spaces/AccelerationConsortium/crabnet-hyperparameter
+
+The external space might be asleep, and this code includes logic to wake it up
+and retry until it becomes available or a retry limit is reached.
+"""
 
 from __future__ import annotations
 
@@ -21,14 +26,40 @@ from benchmarks.definition import (
     Benchmark, 
     ConvergenceExperimentSettings,
 )
-from gradio_client import Client
 
 if TYPE_CHECKING:
     from mpl_toolkits.mplot3d import Axes3D
 
 # Initialize the client
+from gradio_client import Client
 client = Client("AccelerationConsortium/crabnet-hyperparameter")
 
+def wake_up_hfspace(client, max_retries=2, wait_time=150):
+    """
+    Ensure the external Hugging Face space is awake before making predictions.
+    Args:
+        client: The Gradio Client instance.
+        max_retries: Maximum number of retries to wake up the space.
+        wait_time: Seconds to wait between retries.
+    Raises:
+        RuntimeError: If the space does not wake up after max_retries.
+    """
+    for attempt in range(max_retries):
+        try:
+            # Attempt a simple request to check if the space is awake
+            client.predict(0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 
+                           0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.5, 
+                           "c1_0", "c2_0", "c3_0", 
+                           0.5, api_name="/predict")
+            print("Hugging Face space is awake.")
+            return
+        except Exception as e:
+            print(f"Attempt {attempt + 1}: Space is asleep. Retrying in {wait_time} seconds...")
+            time.sleep(wait_time)
+
+    raise RuntimeError("Hugging Face space is still asleep after maximum retries.")
+
+wake_up_hfspace(client)
 
 # Define the function to evaluate
 def _lookup(c1, c2, c3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, 
