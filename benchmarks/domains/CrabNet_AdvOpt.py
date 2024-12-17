@@ -1,4 +1,11 @@
-"""Crabnet hyperparameter function with 20 continuous and 3 categorical input. 
+"""
+@Time    :   2024/11/06 16:21:18
+@Author  :   Rita Lyu
+@Version :   1.0
+@Contact :   ritalyu0817@gmail.com
+@Desc    :   Crabnet hyperparameter benchmarking, a minimization task on Crabnet hyperparameters. 
+
+Crabnet hyperparameter function with 20 continuous (treat as discrete for simplicity) and 3 categorical input. 
 This code interacts with an external API hosted on Hugging Face Spaces:
 https://huggingface.co/spaces/AccelerationConsortium/crabnet-hyperparameter
 
@@ -9,16 +16,16 @@ and retry until it becomes available or a retry limit is reached.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
+import time
+import os
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
 from baybe.campaign import Campaign
-from baybe.parameters import NumericalContinuousParameter, CategoricalParameter
+from baybe.parameters import NumericalDiscreteParameter, CategoricalParameter, TaskParameter
 from baybe.searchspace import SearchSpace
 from baybe.targets import NumericalTarget, TargetMode
-from baybe.constraints import ContinuousLinearInequalityConstraint
 from baybe.recommenders.pure.nonpredictive.sampling import RandomRecommender
 from baybe.simulation import simulate_scenarios
 from baybe.utils.random import set_random_seed
@@ -27,10 +34,7 @@ from benchmarks.definition import (
     ConvergenceExperimentSettings,
 )
 
-if TYPE_CHECKING:
-    from mpl_toolkits.mplot3d import Axes3D
-
-# Initialize the client
+# Wake up the Hugging Face space
 from gradio_client import Client
 client = Client("AccelerationConsortium/crabnet-hyperparameter")
 
@@ -56,36 +60,12 @@ def wake_up_hfspace(client, max_retries=2, wait_time=150):
         except Exception as e:
             print(f"Attempt {attempt + 1}: Space is asleep. Retrying in {wait_time} seconds...")
             time.sleep(wait_time)
-
     raise RuntimeError("Hugging Face space is still asleep after maximum retries.")
 
 wake_up_hfspace(client)
 
-# Define the function to evaluate
-def _lookup(c1, c2, c3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, 
-            x11, x12, x13, x14, x15, x16, x17, x18, x19, x20):
+def adv_opt(c1, c2, c3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20):
     """Optimization function with 20 continuous variables and 3 categorical parameters."""
-    # Assertion checks for the continuous parameters
-    try:
-        for xi, name in zip(
-            [x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, 
-             x11, x12, x13, x14, x15, x16, x17, x18, x19, x20],
-            ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10",
-             "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20"]
-        ):
-            assert 0.0 <= xi <= 1.0, f"{name} must be in the range [0.0, 1.0]."
-    except AssertionError as e:
-        raise ValueError(f"Assertion failed for continuous variables: {e}")
-
-    # Assertion checks for the categorical parameters
-    try:
-        assert c1 in ["c1_0", "c1_1"], f"Invalid value for c1: {c1}."
-        assert c2 in ["c2_0", "c2_1"], f"Invalid value for c2: {c2}."
-        assert c3 in ["c3_0", "c3_1", "c3_2"], f"Invalid value for c3: {c3}."
-    except AssertionError as e:
-        raise ValueError(f"Assertion failed for categorical variables: {e}")
-
-    # Execute the prediction via the Gradio client
     result = client.predict(
         x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, 
         x11, x12, x13, x14, x15, x16, x17, x18, x19, x20,  # Continuous variables
@@ -93,99 +73,236 @@ def _lookup(c1, c2, c3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10,
         0.5,  # Fidelity
         api_name="/predict",
     )
-    return result['data'][0][0]  # Return y1 value
+    return result['data'][0][0]  # return y1 value only
 
+#%% 
+# Run this cell and above if "BayBE_lookup_testing_y1.csv" and "BayBE_lookup_training_y2.csv" are not provided 
+# or if you want to generate data for the benchmark 
 
+# def generate_parameters():
+#     while True:
+#         # Random float values for x1 to x20 between 0.0 and 1.0
+#         params = {f"x{i}": np.random.uniform(0.0, 1.0) for i in range(1, 21)}
+        
+#         # Random categorical values for c1, c2, c3
+#         params["c1"] = np.random.choice(["c1_0", "c1_1"])
+#         params["c2"] = np.random.choice(["c2_0", "c2_1"])
+#         params["c3"] = np.random.choice(["c3_0", "c3_1", "c3_2"])
+        
+#         # Check constraints
+#         if params["x19"] < params["x20"] and params["x6"] + params["x15"] <= 1.0:
+#             return params
+
+# # Create DataFrame for 20 input data size in number_init_points
+# data = [generate_parameters() for _ in range(20)]
+# initial_points = pd.DataFrame(data)
+# # make sure c1, c2, c3 are str type
+# initial_points['c1'] = initial_points['c1'].apply(str)
+# initial_points['c2'] = initial_points['c2'].apply(str)
+# initial_points['c3'] = initial_points['c3'].apply(str)
+
+# # create a dataframe, that has initial points for y1 and y2
+# # add a Target column for y1/y2 value, and a Function column for the fucntion used 
+# lookup_training_y2 = initial_points.copy()
+# lookup_training_y2['Target'] = lookup_training_y2.apply(lambda x: adv_opt_y2(**x), axis=1)
+# lookup_training_y2['Function'] = "TrainingY2"
+
+# lookup_testing_y1 = initial_points.copy()
+# lookup_testing_y1['Target'] = lookup_testing_y1.apply(lambda x: adv_opt_y1(**x), axis=1)
+# lookup_testing_y1['Function'] = "TestingY1"
+
+# # save lookup_training_y2 and lookup_testing_y1 to csv
+# lookup_testing_y1.to_csv("BayBE_lookup_testing_y1.csv", index=False)
+# lookup_training_y2.to_csv("BayBE_lookup_training_y2.csv", index=False)
+#%%
+# import data
+strHomeDir = os.getcwd()
+df_trainingY2 = pd.read_csv(os.path.join(strHomeDir, "benchmarks", "domains", "CrabNet_lookup_training_y2.csv"))
+df_testingY1 = pd.read_csv(os.path.join(strHomeDir, "benchmarks", "domains", "CrabNet_lookup_testing_y1.csv"))
+
+# concatenate the two dataframes
+dfSearchSpace = pd.concat([df_testingY1, df_trainingY2], ignore_index=True)
+# drop the "Target" column
+dfSearchSpace = dfSearchSpace.drop(columns=["Target"])
 
 def advopt(settings: ConvergenceExperimentSettings) -> DataFrame: 
-    """Crabnet hyperparameter function with 20 continuous and 3 categorical input."""
-    # Define the continuous and categorical parameters
-    parameters = [
-        NumericalContinuousParameter(name="x1", bounds=(0.0, 1.0)), 
-        NumericalContinuousParameter(name="x2", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x3", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x4", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x5", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x6", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x7", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x8", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x9", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x10", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x11", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x12", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x13", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x14", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x15", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x16", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x17", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x18", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x19", bounds=(0.0, 1.0)),
-        NumericalContinuousParameter(name="x20", bounds=(0.0, 1.0)),
+    """Crabnet hyperparameter optimization with 20 discrete and 3 categorical input.
+    Compare across random, default, and no task parameter settings.
 
+    Inputs:
+        x1-x20  discrete        0 ≤ xi ≤ 1 for i ∈ {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+        note: x1-x20 are continuous hyperparameters, treat as discrete for simplicity 
+
+        c1      categorical     c1 ∈ {c1_0, c1_1}
+        c2      categorical     c2 ∈ {c2_0, c2_1}
+        c3      categorical     c3 ∈ {c3_0, c3_1, c3_2}
+    Output: continuous
+    Objective: Minimization
+    """
+    # Define and create the search space
+    lstParameters = []
+    lstParameters_noTask = []
+    for col in dfSearchSpace.columns[:-4]:
+        # create a NumericalDiscreteParameter
+        temp_Parameter = NumericalDiscreteParameter(
+            name = col, 
+            values=np.unique(dfSearchSpace[col]), 
+            tolerance=0.0,
+        )
+        # append the parameter to the list
+        lstParameters.append(temp_Parameter)
+        lstParameters_noTask.append(temp_Parameter)
+
+    categorical_parameters = [
         CategoricalParameter(name='c1', values=['c1_0', 'c1_1'], encoding="OHE"),
         CategoricalParameter(name='c2', values=['c2_0', 'c2_1'], encoding="OHE"),
         CategoricalParameter(name='c3', values=['c3_0', 'c3_1', 'c3_2'], encoding="OHE"),
     ]
-    # define constraints
-    constraints = [
-        ContinuousLinearInequalityConstraint(parameters=["x19", "x20"], coefficients=[-1.0, 1.0], rhs=0.0),
-        ContinuousLinearInequalityConstraint(parameters=["x6", "x15"], coefficients=[-1.0, -1.0], rhs=-1.0), 
-    ]
+    lstParameters.extend(categorical_parameters)
+    lstParameters_noTask.extend(categorical_parameters)
 
-    # Define the objective and search space
-    objective = NumericalTarget(name="target", mode=TargetMode.MIN).to_objective()
-    search_space = SearchSpace.from_product(parameters=parameters, constraints=constraints)
+    task_parameter = TaskParameter(
+        name="Function",
+        values=["TrainingY2", "TestingY1"],
+        active_values=["TestingY1"],
+    )
+
+    # append the task parameter to the list
+    lstParameters.append(task_parameter)
+
+    search_space = SearchSpace.from_dataframe(dfSearchSpace, parameters=lstParameters)
+    searchspace_noTask = SearchSpace.from_dataframe(df_testingY1.drop(columns=['Target', 'Function']), parameters=lstParameters_noTask)
+
+    # define objective
+    objective = NumericalTarget(name="Target", mode=TargetMode.MIN).to_objective()
 
     # Define the scenarios
     scenarios: dict[str, Campaign] = {
         "Random Recommender": Campaign(
-            searchspace=search_space,
+            searchspace=SearchSpace.from_dataframe(
+                df_testingY1.drop(columns=['Target', 'Function']),
+                parameters=lstParameters_noTask
+            ),
             recommender=RandomRecommender(),
             objective=objective,
         ),
         "Default Recommender": Campaign(
-            searchspace=search_space,
+            searchspace=SearchSpace.from_dataframe(
+                dfSearchSpace, 
+                parameters=lstParameters,
+            ),
             objective=objective,
         ),
-    }
+        "noTask": Campaign(
+            searchspace=searchspace_noTask, 
+            objective=objective,
+        ),
+        }
 
     # Simulate the scenarios
     return simulate_scenarios(
         scenarios,
-        _lookup,
+        df_testingY1,
         batch_size=settings.batch_size,
         n_doe_iterations=settings.n_doe_iterations,
         n_mc_iterations=settings.n_mc_iterations,
         impute_mode="error",
     )
 
+
+def advopt_transfer_learning(settings: ConvergenceExperimentSettings) -> DataFrame: 
+    """Crabnet hyperparameter optimization with 20 discrete and 3 categorical input.
+    Transfer learning with different initial data sizes.
+
+    Inputs:
+        x1-x20  discrete        0 ≤ xi ≤ 1 for i ∈ {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+        note: x1-x20 are continuous hyperparameters, treat as discrete for simplicity 
+
+        c1      categorical     c1 ∈ {c1_0, c1_1}
+        c2      categorical     c2 ∈ {c2_0, c2_1}
+        c3      categorical     c3 ∈ {c3_0, c3_1, c3_2}
+    Output: continuous
+    Objective: Minimization
+    """
+    # Define and create the search space
+    lstParameters = []
+    for col in dfSearchSpace.columns[:-4]:
+        # create a NumericalDiscreteParameter
+        temp_Parameter = NumericalDiscreteParameter(
+            name = col, 
+            values=np.unique(dfSearchSpace[col]), 
+            tolerance=0.0,
+        )
+        # append the parameter to the list
+        lstParameters.append(temp_Parameter)
+
+    categorical_parameters = [
+        CategoricalParameter(name='c1', values=['c1_0', 'c1_1'], encoding="OHE"),
+        CategoricalParameter(name='c2', values=['c2_0', 'c2_1'], encoding="OHE"),
+        CategoricalParameter(name='c3', values=['c3_0', 'c3_1', 'c3_2'], encoding="OHE"),
+    ]
+    lstParameters.extend(categorical_parameters)
+
+    task_parameter = TaskParameter(
+        name="Function",
+        values=["TrainingY2", "TestingY1"],
+        active_values=["TestingY1"],
+    )
+
+    # append the task parameter to the list
+    lstParameters.append(task_parameter)
+
+    # define objective
+    objective = NumericalTarget(name="Target", mode=TargetMode.MIN).to_objective()
+
+    for n in (50, 100, 500, 700, 1000): 
+        search_space = SearchSpace.from_dataframe(dfSearchSpace, parameters=lstParameters)
+
+        campaign_temp = Campaign(searchspace=search_space, objective=objective)
+        initial_data_temp = [df_trainingY2.sample(n) for _ in range(settings.n_mc_iterations)]
+
+    return simulate_scenarios(
+        {f"{n} Initial Data": campaign_temp},
+        df_testingY1, 
+        initial_data=initial_data_temp,
+        batch_size=settings.batch_size,
+        n_doe_iterations=settings.n_doe_iterations,
+        impute_mode="error",
+    )
+
 #%%
 benchmark_config = ConvergenceExperimentSettings(
     batch_size=1,
-    n_doe_iterations=10,
+    n_doe_iterations=30,
     n_mc_iterations=5,
 )
 
 # Define the benchmark
-crabnet_advopt_benchmark = Benchmark(
+crabnet_benchmark = Benchmark(
     function=advopt,
     best_possible_result=None,
     settings=benchmark_config,
     optimal_function_inputs=None,
 )
 
+crabnet_transfer_learning_benchmark = Benchmark(
+    function=advopt_transfer_learning,
+    best_possible_result=None,
+    settings=benchmark_config,
+    optimal_function_inputs=None,
+)
 
-# ---------------- to do
-# reasonable visulization of the benchmark (eg. data frame)
-# help understand the benchmark
 
 if __name__ == "__main__":
     #  Describe the benchmark task
-    print("CrabNet optimization is a minimization task by tuning 20 continuous and 3 categorical hyperparameters.")
-    print("The continuous hyperparameters include number of attention layers, learning rate, step size of epochs, etc.")
+    print("CrabNet optimization is a minimization task by tuning 20 numerical and 3 categorical hyperparameters.")
+    print("The numerical hyperparameters include number of attention layers, learning rate, step size of epochs, etc.")
     print("Details can be found in Table 1 of Baird, S. G.; Liu, M.; Sparks, T. D. High-Dimensional Bayesian Optimization of 23 Hyperparameters over 100 Iterations for an Attention-Based Network to Predict Materials Property: A Case Study on CrabNet Using Ax Platform and SAASBO. Computational Materials Science 2022, 211, 111505.")
     print("The categorical hyperparameters include boolean values for bias residual network, loss function, and elemental feature vector.")
-    print("The continuous hyperparameters are normalized to range [0.0, 1.0], while the categorical hyperparameters are one-hot encoded.")
+    print("The numerical hyperparameters are normalized to range [0.0, 1.0], while the categorical hyperparameters are one-hot encoded.")
     print("")
     print("The objective is to minimize y1, RMSE, of the CrabNet hyperparameter function. If y1 is greater than 0.2, the result is coonsider bad.")
-
+    print("")
+    print("CrabNet benchmark compares across random, default, and no task parameter set up. ")
+    print("")
+    print("CrabNet transfer learning benchmark compares across different initialized data sizes. ")
