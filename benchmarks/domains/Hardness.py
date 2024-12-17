@@ -1,4 +1,10 @@
-"""Synthetic function with two continuous and one discrete input."""
+"""
+@Time    :   2024/09/30 11:17:24
+@Author  :   Daniel Persaud
+@Version :   1.0
+@Contact :   da.persaud@mail.utoronto.ca
+@Desc    :   Hardness benchmarking, a maximization task on experimental hardness dataset. 
+"""
 
 from __future__ import annotations
 
@@ -29,32 +35,25 @@ from benchmarks.definition import (
 
 # IMPORT AND PREPROCESS DATA------------------------------------------------------------------------------
 strHomeDir = os.getcwd()
-
 dfMP = pd.read_csv(
     os.path.join(strHomeDir, "benchmarks", "domains", "mp_bulkModulus_goodOverlap.csv"), index_col=0
 )
-
 dfExp = pd.read_csv(
     os.path.join(strHomeDir, "benchmarks", "domains", "exp_hardness_goodOverlap.csv"), index_col=0
 )
-
 lstElementCols = dfExp.columns.to_list()[4:]
 
 # ----- FUTHER CLEAN THE DATA BASED ON THE EDA -----
-
 # initialize an empty dataframe to store the integrated hardness values
 dfExp_integratedHardness = pd.DataFrame()
 
 # for each unique composition in dfExp, make a cubic spline interpolation of the hardness vs load curve
 for strComposition_temp in dfExp["composition"].unique():
-    # get the data for the composition
     dfComposition_temp = dfExp[dfExp["composition"] == strComposition_temp]
     # sort the data by load
     dfComposition_temp = dfComposition_temp.sort_values(by="load")
-    # if there are any duplicate values for load, drop them
     dfComposition_temp = dfComposition_temp.drop_duplicates(subset="load")
-    # if there are less than 5 values, continue to the next composition
-    if len(dfComposition_temp) < 5:
+    if len(dfComposition_temp) < 5:     # continue to the next composition
         continue
 
     # make a cubic spline interpolation of the hardness vs load curve
@@ -65,50 +64,47 @@ for strComposition_temp in dfExp["composition"].unique():
     # make a new dataframe with the lstElementCols from dfComposition_temp
     dfComposition_temp = dfComposition_temp[['strComposition', 'composition'] + lstElementCols]
     dfComposition_temp = dfComposition_temp.drop_duplicates(subset='composition')
-    # add a column to dfComposition_temp called 'integratedHardness' and set all values to fltIntegral_temp
     dfComposition_temp["integratedHardness"] = fltIntegral_temp
 
-    # append dfComposition_temp to dfExp_integratedHardness
     dfExp_integratedHardness = pd.concat([dfExp_integratedHardness, dfComposition_temp])
 
-# ----- CREATE _lookup FOR THE SEARCH SPACE -----
 # ----- TARGET FUNCTION (INTEGRATED HARDNESS) -----
 # make a dataframe for the task function (integrated hardness)
 dfSearchSpace_target = dfExp_integratedHardness[lstElementCols]
-# add a column to dfSearchSpace_task called 'Function' and set all values to 'taskFunction'
 dfSearchSpace_target["Function"] = "targetFunction"
 
 # make a lookup table for the task function (integrate hardness) - add the 'integratedHardness' column from dfExp to dfSearchSpace_task
 dfLookupTable_target = pd.concat([dfSearchSpace_target, dfExp_integratedHardness["integratedHardness"]], axis=1)
-# make the 'integrate hardness' column the 'Target' column
 dfLookupTable_target = dfLookupTable_target.rename(columns={"integratedHardness":"Target"})
 
 # ----- SOURCE FUNCTION (VOIGT BULK MODULUS) -----
 # make a dataframe for the source function (voigt bulk modulus)
 dfSearchSpace_source = dfMP[lstElementCols]
-# add a column to dfSearchSpace_source called 'Function' and set all values to 'sourceFunction'
 dfSearchSpace_source["Function"] = "sourceFunction"
 
 # make a lookup table for the source function (voigt bulk modulus) - add the 'vrh' column from dfMP to dfSearchSpace_source
 dfLookupTable_source = pd.concat([dfSearchSpace_source, dfMP["vrh"]], axis=1)
-# make the 'vrh' column the 'Target' column
 dfLookupTable_source = dfLookupTable_source.rename(columns={"vrh": "Target"})
 
 # concatenate the two dataframes
 dfSearchSpace = pd.concat([dfSearchSpace_target, dfSearchSpace_source])
 
 def hardness(settings: ConvergenceExperimentSettings) -> DataFrame:
-    """Exp hardness dataset.
+    """Integrated hardness benchmark, compares across random, default, and no task parameter set up
 
-    Inputs: composition
-
+    Inputs: 
+        B   discrete    {0.8, 0.66666667, 0.92307692 ...}   |B| = 13
+        Sc  discrete    {0.,  0.00384615, 0.01923077 ...}   |Sc| = 26
+        Cr  discrete    {0.01, 0.06, 0.1 ...}               |Cr| = 20
+        Y   discrete    {0., 0.07307692, 0.05769231 ...}    |Y| = 31
+        Zr  discrete    {0., 0.07307692, 0.05769231 ...}    |Zr| = 19
+        Gd  discrete    {0., 0.03968254, 0.01587302 ...}    |Gd| = 12
+        Hf  discrete    {0., 0.008, 0.02 ...}               |Hf| = 13
+        Ta  discrete    {0., 0.006, 0.008 ...}              |Ta| = 17
+        W   discrete    {0.19, 0.14, 0.1 ...}               |W| = 30
+        Re  discrete    {0., 0.2, 0.33333 ...}              |Re| = 15
     Output: discrete
     Objective: Maximization
-    Optimal Inputs:
-        ----
-        ----
-    Optimal Output:
-        ----
     """
 
     lstParameters_bb = []
@@ -116,7 +112,6 @@ def hardness(settings: ConvergenceExperimentSettings) -> DataFrame:
 
     # for each column in dfSearchSpace except the last one, create a NumericalDiscreteParameter
     for strCol_temp in dfSearchSpace.columns[:-1]:
-        # create a NumericalDiscreteParameter
         bbParameter_temp = NumericalDiscreteParameter(
             name=strCol_temp,
             values=np.unique(dfSearchSpace[strCol_temp]),
@@ -139,7 +134,6 @@ def hardness(settings: ConvergenceExperimentSettings) -> DataFrame:
     search_space = SearchSpace.from_dataframe(dfSearchSpace, parameters=lstParameters_bb)
     SearchSpace_noTask = SearchSpace.from_dataframe(dfSearchSpace_target[lstElementCols], parameters=lstParameters_bb_noTask)
     
-    # objective = NumericalTarget(name="target", mode=TargetMode.MAX).to_objective()
     objective = NumericalTarget(name="Target", mode=TargetMode.MAX).to_objective()
 
     scenarios: dict[str, Campaign] = {
@@ -175,17 +169,21 @@ def hardness(settings: ConvergenceExperimentSettings) -> DataFrame:
 
 
 def hardness_transfer_learning(settings: ConvergenceExperimentSettings) -> DataFrame:
-    """Exp hardness dataset.
+    """Integrated hardness benchmark, transfer learning with different initialized data sizes
 
-    Inputs: composition
-
+    Inputs: 
+        B   discrete    {0.8, 0.66666667, 0.92307692 ...}   |B| = 13
+        Sc  discrete    {0.,  0.00384615, 0.01923077 ...}   |Sc| = 26
+        Cr  discrete    {0.01, 0.06, 0.1 ...}               |Cr| = 20
+        Y   discrete    {0., 0.07307692, 0.05769231 ...}    |Y| = 31
+        Zr  discrete    {0., 0.07307692, 0.05769231 ...}    |Zr| = 19
+        Gd  discrete    {0., 0.03968254, 0.01587302 ...}    |Gd| = 12
+        Hf  discrete    {0., 0.008, 0.02 ...}               |Hf| = 13
+        Ta  discrete    {0., 0.006, 0.008 ...}              |Ta| = 17
+        W   discrete    {0.19, 0.14, 0.1 ...}               |W| = 30
+        Re  discrete    {0., 0.2, 0.33333 ...}              |Re| = 15
     Output: discrete
     Objective: Maximization
-    Optimal Inputs:
-        ----
-        ----
-    Optimal Output:
-        ----
     """
 
     lstParameters_bb = []
@@ -193,7 +191,6 @@ def hardness_transfer_learning(settings: ConvergenceExperimentSettings) -> DataF
 
     # for each column in dfSearchSpace except the last one, create a NumericalDiscreteParameter
     for strCol_temp in dfSearchSpace.columns[:-1]:
-        # create a NumericalDiscreteParameter
         bbParameter_temp = NumericalDiscreteParameter(
             name=strCol_temp,
             values=np.unique(dfSearchSpace[strCol_temp]),
@@ -213,16 +210,10 @@ def hardness_transfer_learning(settings: ConvergenceExperimentSettings) -> DataF
     # append the taskParameter to the list of parameters
     lstParameters_bb.append(bbTaskParameter)
 
-    # search_space = SearchSpace.from_dataframe(dfSearchSpace, parameters=lstParameters_bb)
-    # SearchSpace_noTask = SearchSpace.from_dataframe(dfSearchSpace_target[lstElementCols], parameters=lstParameters_bb_noTask)
-    
-    # objective = NumericalTarget(name="target", mode=TargetMode.MAX).to_objective()
     objective = NumericalTarget(name="Target", mode=TargetMode.MAX).to_objective()
 
     for n in (2, 4, 6, 30):
-        # reinitialize the search space
         bbSearchSpace = SearchSpace.from_dataframe(dfSearchSpace, parameters=lstParameters_bb)
-        # reinitialize the campaign
         bbCampaign_temp = Campaign(
             searchspace=bbSearchSpace,
             objective=objective)
