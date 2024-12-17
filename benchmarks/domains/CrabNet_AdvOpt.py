@@ -76,7 +76,7 @@ def adv_opt(c1, c2, c3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, 
     return result['data'][0][0]  # return y1 value only
 
 #%% 
-# Run this cell and above if "BayBE_lookup_testing_y1.csv" and "BayBE_lookup_training_y2.csv" are not provided 
+# Run this cell and above if "CrabNet_lookup_testing_y1.csv" and "CrabNet_lookup_training_y2.csv" are not provided 
 # or if you want to generate data for the benchmark 
 
 # def generate_parameters():
@@ -112,8 +112,8 @@ def adv_opt(c1, c2, c3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, 
 # lookup_testing_y1['Function'] = "TestingY1"
 
 # # save lookup_training_y2 and lookup_testing_y1 to csv
-# lookup_testing_y1.to_csv("BayBE_lookup_testing_y1.csv", index=False)
-# lookup_training_y2.to_csv("BayBE_lookup_training_y2.csv", index=False)
+# lookup_testing_y1.to_csv("CrabNet_lookup_testing_y1.csv", index=False)
+# lookup_training_y2.to_csv("CrabNet_lookup_training_y2.csv", index=False)
 #%%
 # import data
 strHomeDir = os.getcwd()
