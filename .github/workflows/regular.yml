@@ -24,6 +24,7 @@ jobs:
   reminder:
     runs-on: ubuntu-latest
     name: "Reminder"
+    if: github.repository_owner == 'emdgroup'
     continue-on-error: true
     permissions:
       issues: write
@@ -36,6 +37,7 @@ jobs:
   # CI pipeline, because the respective pages are yet to be created at that time).
   docs:
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'emdgroup'
     permissions:
       contents: read
     steps:
@@ -54,8 +56,9 @@ jobs:
         py-version: [ {semantic: '3.10', tox: 'py310'},
                       {semantic: '3.11', tox: 'py311'},
                       {semantic: '3.12', tox: 'py312'} ]
-    name: Lint ${{ matrix.py-version.semantic }}
     runs-on: ubuntu-latest
+    name: Lint ${{ matrix.py-version.semantic }}
+    if: github.repository_owner == 'emdgroup'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -75,8 +78,9 @@ jobs:
         py-version: [ {semantic: '3.10', tox: 'py310'},
                       {semantic: '3.11', tox: 'py311'},
                       {semantic: '3.12', tox: 'py312'} ]
-    name: Type Check ${{ matrix.py-version.semantic }}
     runs-on: ubuntu-latest
+    name: Type Check ${{ matrix.py-version.semantic }}
+    if: github.repository_owner == 'emdgroup'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -96,8 +100,9 @@ jobs:
         py-version: [ {semantic: '3.10', tox: 'py310'},
                       {semantic: '3.11', tox: 'py311'},
                       {semantic: '3.12', tox: 'py312'} ]
-    name: Audit ${{ matrix.py-version.semantic }}
     runs-on: ubuntu-latest
+    name: Audit ${{ matrix.py-version.semantic }}
+    if: github.repository_owner == 'emdgroup'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,8 +122,9 @@ jobs:
         py-version: [ {semantic: '3.10', tox: 'py310'},
                       {semantic: '3.11', tox: 'py311'},
                       {semantic: '3.12', tox: 'py312'} ]
-    name: Core Tests ${{ matrix.py-version.semantic }}
     runs-on: ubuntu-latest
+    name: Core Tests ${{ matrix.py-version.semantic }}
+    if: github.repository_owner == 'emdgroup'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -138,8 +144,9 @@ jobs:
         py-version: [ {semantic: '3.10', tox: 'py310'},
                       {semantic: '3.11', tox: 'py311'},
                       {semantic: '3.12', tox: 'py312'} ]
-    name: Full Tests ${{ matrix.py-version.semantic }}
     runs-on: ubuntu-latest
+    name: Full Tests ${{ matrix.py-version.semantic }}
+    if: github.repository_owner == 'emdgroup'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
