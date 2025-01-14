@@ -31,7 +31,10 @@ The **Bay**esian **B**ack **E**nd (**BayBE**) is a general-purpose toolbox for B
 of Experiments, focusing on additions that enable real-world experimental campaigns.
 
 ## 🔋 Batteries Included
-Besides functionality to perform a typical recommend-measure loop, BayBE's highlights are:
+Besides its core functionality for executing a typical recommend-measure loop, BayBE
+offers a range of ✨ **built-in features** ✨ crucial for real-world use cases.
+The following provides a non-comprehensive overview:
+
 - ✨ Custom parameter encodings: Improve your campaign with domain knowledge
 - 🧪 Built-in chemical encodings: Improve your campaign with chemical knowledge
 - 🎯 Single and multiple targets with min, max and match objectives
